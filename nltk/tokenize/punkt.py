@@ -613,16 +613,25 @@ class PunktBaseClass:
 
         if tok in self._lang_vars.sent_end_chars:
             aug_tok.sentbreak = True
+
         elif aug_tok.is_ellipsis:
             aug_tok.ellipsis = True
+
         elif aug_tok.period_final and not tok.endswith(".."):
-            if (
-                tok[:-1].lower() in self._params.abbrev_types
-                or tok[:-1].lower().split("-")[-1] in self._params.abbrev_types
+
+            typ_no_period = aug_tok.type_no_period # Get token text without final period already in lowercase.
+            last_dash = typ_no_period.split("-")[-1] # Handle words with dashes. checks the last part (after dash).
+
+            if ( # Check if token or its last dashed part is in the known abbreviation list
+                typ_no_period in self._params.abbrev_types
+                or last_dash in self._params.abbrev_types
             ):
                 aug_tok.abbr = True
             else:
-                aug_tok.sentbreak = True
+                if "." in typ_no_period: # if token (without its last period) still has dots inside (like 'ph.d')
+                    aug_tok.abbr = True
+                else:
+                    aug_tok.sentbreak = True # it's probably an abbreviation.
 
         return
 
