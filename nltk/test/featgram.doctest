@@ -33,14 +33,30 @@ Grammars can be parsed from strings.
     ... N[AGR=[NUM='sg']] -> 'student'
     ... N[AGR=[NUM='pl']] -> 'students'
     ... """
-    >>> grammar = grammar.FeatureGrammar.fromstring(g)
+    >>> dp_grammar = grammar.FeatureGrammar.fromstring(g)
     >>> tokens = 'these girls'.split()
-    >>> parser = parse.FeatureEarleyChartParser(grammar)
+    >>> parser = parse.FeatureEarleyChartParser(dp_grammar)
     >>> trees = parser.parse(tokens)
     >>> for tree in trees: print(tree)
     (DP[AGR=[GND='f', NUM='pl', PERS=3]]
-      (D[AGR=[NUM='pl', PERS=3]] these)
-      (N[AGR=[GND='f', NUM='pl']] girls))
+      (D[AGR=[GND='f', NUM='pl', PERS=3]] these)
+      (N[AGR=[GND='f', NUM='pl', PERS=3]] girls))
+
+Features introduced on the right-hand side of phrasal rules are preserved
+in the resulting parse trees, even if they are not listed in the lexical
+entries for that category.
+
+    >>> g = '''
+    ... % start NP
+    ... NP -> DT N[+ani, +h]
+    ... DT -> 'the'
+    ... N[+ani] -> 'animal'
+    ... '''
+    >>> np_grammar = grammar.FeatureGrammar.fromstring(g)
+    >>> parser = parse.FeatureChartParser(np_grammar, chart_class=parse.featurechart.FeatureChart, trace=0)
+    >>> parses = parser.chart_parse('the animal'.split())
+    >>> list(parses.parses(np_grammar.start()))
+    [Tree(NP[], [Tree(DT[], ['the']), Tree(N[+ani, +h], ['animal'])])]
 
 In general, when we are trying to develop even a very small grammar,
 it is convenient to put the rules in a file where they can be edited,
@@ -493,12 +509,12 @@ Let's load a German grammar:
     (S[]
       (NP[AGR=[GND='fem', NUM='sg', PER=3], CASE='nom']
         (Det[AGR=[GND='fem', NUM='sg', PER=3], CASE='nom'] die)
-        (N[AGR=[GND='fem', NUM='sg', PER=3]] Katze))
-      (VP[AGR=[NUM='sg', PER=3]]
+        (N[AGR=[GND='fem', NUM='sg', PER=3], CASE='nom'] Katze))
+      (VP[AGR=[GND='fem', NUM='sg', PER=3]]
         (TV[AGR=[NUM='sg', PER=3], OBJCASE='acc'] sieht)
         (NP[AGR=[GND='masc', NUM='sg', PER=3], CASE='acc']
           (Det[AGR=[GND='masc', NUM='sg', PER=3], CASE='acc'] den)
-          (N[AGR=[GND='masc', NUM='sg', PER=3]] Hund))))
+          (N[AGR=[GND='masc', NUM='sg', PER=3], CASE='acc'] Hund))))
 
 Grammar with Binding Operators
 ------------------------------
