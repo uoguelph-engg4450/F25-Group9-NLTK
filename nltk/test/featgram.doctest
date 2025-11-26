@@ -58,6 +58,30 @@ entries for that category.
     >>> list(parses.parses(np_grammar.start()))
     [Tree(NP[], [Tree(DT[], ['the']), Tree(N[+ani, +h], ['animal'])])]
 
+The tree reconstruction helper used by feature charts also handles memoized
+and incomplete edges so that cached results are reused and partial trees
+show any remaining right-hand-side categories.
+
+    >>> from nltk.parse.featurechart import FeatureChart, FeatureTreeEdge
+    >>> from nltk.grammar import FeatStructNonterminal
+    >>> from nltk.tree import Tree
+    >>> chart = FeatureChart([])
+    >>> np_edge = FeatureTreeEdge((0, 0), FeatStructNonterminal('NP'), (), 0)
+    >>> _ = chart.insert(np_edge, [])
+    >>> s_edge = FeatureTreeEdge(
+    ...     (0, 0),
+    ...     FeatStructNonterminal('S'),
+    ...     (FeatStructNonterminal('NP'), FeatStructNonterminal('VP')),
+    ...     dot=1,
+    ... )
+    >>> _ = chart.insert(s_edge, [np_edge])
+    >>> chart._trees(s_edge, complete=True, memo={}, tree_class=Tree)
+    []
+    >>> chart._trees(s_edge, complete=False, memo={}, tree_class=Tree)
+    [Tree(S[], [Tree(NP[], []), Tree(VP[], [])])]
+    >>> chart._trees(s_edge, complete=False, memo={s_edge: ['cached']}, tree_class=Tree)
+    ['cached']
+
 In general, when we are trying to develop even a very small grammar,
 it is convenient to put the rules in a file where they can be edited,
 tested and revised. Let's assume that we have saved feat0cfg as a file named
