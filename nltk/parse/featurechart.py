@@ -10,6 +10,7 @@
 Extension of chart parsing implementation to handle grammars with
 feature structures as nodes.
 """
+import itertools
 from time import perf_counter
 
 from nltk.featstruct import TYPE, FeatStruct, find_variables, unify
@@ -228,6 +229,58 @@ class FeatureChart(Chart):
             return item[TYPE]
         else:
             return item
+
+    def _trees(self, edge, complete, memo, tree_class):
+        """
+        Reconstruct trees for an edge, ensuring any feature values introduced
+        on the right-hand side of phrasal rules are preserved in the output
+        trees by unifying expected RHS symbols with the child edge labels.
+        """
+        if not isinstance(edge, FeatureTreeEdge):
+            return Chart._trees(self, edge, complete, memo, tree_class)
+
+        if edge in memo:
+            return memo[edge]
+
+        if complete and edge.is_incomplete():
+            return []
+
+        memo[edge] = []
+        trees = []
+        lhs = edge.lhs().symbol()
+
+        for cpl in self.child_pointer_lists(edge):
+            child_choices = [self._trees(cp, complete, memo, tree_class) for cp in cpl]
+
+            for children in itertools.product(*child_choices):
+                merged_children = [
+                    self._merge_rhs_features(child, expected, tree_class)
+                    for child, expected in zip(children, edge.rhs()[: len(children)])
+                ]
+                trees.append(tree_class(lhs, merged_children))
+
+        if edge.is_incomplete():
+            unexpanded = [tree_class(elt, []) for elt in edge.rhs()[edge.dot() :]]
+            for tree in trees:
+                tree.extend(unexpanded)
+
+        memo[edge] = trees
+        return trees
+
+    def _merge_rhs_features(self, child, expected, tree_class):
+        """
+        Merge feature values introduced on the production RHS into the
+        resulting child tree label for display. This is needed when the
+        grammar specifies additional features in phrasal rules that are
+        not present in the lexical entries for that child.
+        """
+        if not (is_nonterminal(expected) and isinstance(child, Tree)):
+            return child
+
+        merged = unify(expected, child.label(), rename_vars=False)
+        if merged is None or merged == child.label():
+            return child
+        return child.__class__(merged, list(child))
 
     def parses(self, start, tree_class=Tree):
         for edge in self.select(start=0, end=self._num_leaves):
